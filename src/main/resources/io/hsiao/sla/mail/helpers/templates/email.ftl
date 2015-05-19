@@ -47,8 +47,8 @@
 <br>
 <table>
   <tr>
-  <#list headers as header><#t>
-    <th>${header}</th>
+  <#list headlines as headline><#t>
+    <th>${headline}</th>
   </#list><#t>
   </tr>
   <#list artifacts as artifact><#t>

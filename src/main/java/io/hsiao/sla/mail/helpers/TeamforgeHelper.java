@@ -8,6 +8,7 @@ import io.hsiao.devops.clib.teamforge.FilterBuilder;
 import io.hsiao.devops.clib.teamforge.FilterElement;
 import io.hsiao.devops.clib.teamforge.SortKeyElement;
 import io.hsiao.devops.clib.teamforge.Teamforge;
+import io.hsiao.devops.clib.teamforge.TrackerFieldData;
 import io.hsiao.devops.clib.utils.CommonUtils;
 
 import java.util.LinkedHashMap;
@@ -39,21 +40,18 @@ public final class TeamforgeHelper {
     teamforge.logoff();
   }
 
-  public List<ArtifactDetailElement> getArtifactDetailList(final String project, final String tracker, final Map<String, String> rules) throws Exception {
-    if (project == null) {
-      throw new Exception("argument 'project' is null");
-    }
+  public String getProjectId(final String project) throws Exception {
+    return teamforge.getProjectId(project);
+  }
 
-    if (tracker == null) {
-      throw new Exception("argument 'tracker' is null");
-    }
+  public String getTrackerId(final String projectId, final String tracker) throws Exception {
+    return teamforge.getTrackerId(projectId, tracker);
+  }
 
+  public List<ArtifactDetailElement> getArtifactDetailList(final String projectId, final String trackerId, final Map<String, String> rules) throws Exception {
     if (rules == null) {
       throw new Exception("argument 'rules' is null");
     }
-
-    final String projectId = teamforge.getProjectId(project);
-    final String trackerId = teamforge.getTrackerId(projectId, tracker);
 
     final Map<String, String> filterMap = new LinkedHashMap<>();
     for (final Map.Entry<String, String> rule: rules.entrySet()) {
@@ -78,6 +76,46 @@ public final class TeamforgeHelper {
     return teamforge.getArtifactDetailList(trackerId, filters, sortKeys);
   }
 
+  public Map<String, TrackerFieldData> getTrackerFieldDataMap(final String trackerId) throws Exception {
+    return TrackerFieldData.toMap(teamforge.getTrackerFieldDataList(trackerId));
+  }
+
+  public String getArtifactFieldType(final Map<String, TrackerFieldData> map, final String name) throws Exception {
+    return TrackerFieldData.getFieldType(map, name);
+  }
+
+  public String getArtifactFieldValue(final ArtifactDetailElement artifactDetailElement, final String name, final String type) throws Exception {
+    final Object object;
+
+    if (name.equalsIgnoreCase("assignedto") || name.equalsIgnoreCase("assigned to") || name.equalsIgnoreCase("assignee")) {
+      object = artifactDetailElement.getAssignedToFullname();
+    }
+    else if (name.equalsIgnoreCase("priority")) {
+      object = artifactDetailElement.getPriorityText();
+    }
+    else if (name.equalsIgnoreCase("submittedby") || name.equalsIgnoreCase("submitted by") || name.equalsIgnoreCase("submitter")) {
+      object = artifactDetailElement.getAssignedToFullname();
+    }
+    else {
+      object = artifactDetailElement.getFieldValue(name, type);
+    }
+
+    if (object instanceof List<?>) {
+      final StringBuilder sb = new StringBuilder();
+      @SuppressWarnings("unchecked")
+      final List<Object> values = (List<Object>) object;
+      for (final Object value: values) {
+        sb.append(value);
+        sb.append("\n");
+      }
+      return sb.toString();
+    }
+    else {
+      return object.toString();
+    }
+  }
+
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(TeamforgeHelper.class);
   private final Teamforge teamforge;
   private final Properties teamforgeProps;

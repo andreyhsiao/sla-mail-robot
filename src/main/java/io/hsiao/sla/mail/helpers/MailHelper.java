@@ -4,9 +4,11 @@ import io.hsiao.devops.clib.exception.Exception;
 import io.hsiao.devops.clib.exception.RuntimeException;
 import io.hsiao.devops.clib.logging.Logger;
 import io.hsiao.devops.clib.logging.LoggerFactory;
-import io.hsiao.devops.clib.teamforge.ArtifactDetailElement;
+import io.hsiao.devops.clib.mail.Mail;
 import io.hsiao.devops.clib.utils.CommonUtils;
 
+import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
@@ -19,27 +21,49 @@ public final class MailHelper {
     mailProps = CommonUtils.loadProperties(getClass(), mailPropsFile);
   }
 
-  public boolean send(final List<ArtifactDetailElement> artifactDetailList, final String mailToList,
-      final String timeFrame, final String headlines) {
-    if (artifactDetailList == null) {
-      throw new RuntimeException("argument 'artifactDetailList' is null");
+  public void send(final String subject, final String content, final String mailtos) throws Exception {
+    if (subject == null) {
+      throw new RuntimeException("argument 'subject' is null");
     }
 
-    if (mailToList == null) {
-      throw new RuntimeException("argument 'mailToList' is null");
+    if (content == null) {
+      throw new RuntimeException("argument 'content' is null");
     }
 
-    if (timeFrame == null) {
-      throw new RuntimeException("argument 'timeFrame' is null");
+    if (mailtos == null) {
+      throw new RuntimeException("argument 'mailtos' is null");
     }
 
-    if (headlines == null) {
-      throw new RuntimeException("argument 'headlines' is null");
+    final String smtpHost = CommonUtils.getProperty(mailProps, "smtp.host", false);
+    final String smtpPort = CommonUtils.getProperty(mailProps, "smtp.port", false);
+
+    final String username = CommonUtils.getProperty(mailProps, "username", false);
+    final String password = CommonUtils.getProperty(mailProps, "password", false);
+
+    final String domain = CommonUtils.getProperty(mailProps, "default.domain", false);
+
+    final Properties props = Mail.getProperties(smtpHost, smtpPort);
+    final Mail mail = new Mail(props);
+
+    final List<String> mailToList = new LinkedList<>();
+    for (String mailto: mailtos.split(",")) {
+      mailto = mailto.trim();
+
+      if (!mailto.isEmpty()) {
+        mailToList.add(mailto);
+      }
     }
 
-    return true;
+    mail.setFrom(username + "@" + domain);
+    mail.setSubject(subject, "UTF-8");
+    mail.setContent(content, "text/html; charset=UTF-8");
+    mail.setRecipients(Mail.RecipientTypeTO, mailToList, domain);
+    mail.setSentDate(new Date());
+
+    mail.send(username, password);
   }
 
+  @SuppressWarnings("unused")
   private static final Logger logger = LoggerFactory.getLogger(MailHelper.class);
   private final Properties mailProps;
 }
